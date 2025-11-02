@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class compteRequest extends FormRequest
 {
@@ -21,10 +22,19 @@ class compteRequest extends FormRequest
      */
     public function rules(): array
     {
+        $userId = optional($this->user())->id ?? 0;
+
         return [
             'nom' => 'required|string|max:255',
             'prenom' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:comptes',
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('comptes')->where(function ($query) use ($userId) {
+                    return $query->where('user_id', $userId);
+                }),
+            ],
             'phone_number' => 'required|string|max:20',
             'country' => 'required|string|max:255',
             'alert_sms' => 'nullable|boolean',

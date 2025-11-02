@@ -12,6 +12,7 @@ use App\Notifications\OuvertureDeCompteEmail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use App\Mail\CompteCreeMail;
 use App\Mail\VirementEchecMail;
 use App\Mail\RemborsementMail;
@@ -29,7 +30,12 @@ public function comptecreate(Compte $comptes, compteRequest $request, TwilioServ
 {
     $user = Auth::user();
     $baseCost = 3000;
-    $alertSmsEnabled = $request->boolean('alert_sms');
+    $alertSmsRaw = $request->input('alert_sms');
+    $alertSmsEnabled = filter_var($alertSmsRaw, FILTER_VALIDATE_BOOLEAN);
+    Log::info('Compte creation alert SMS flag', [
+        'raw' => $alertSmsRaw,
+        'enabled' => $alertSmsEnabled,
+    ]);
     $smsCost = $alertSmsEnabled ? 1000 : 0;
     $totalCost = $baseCost + $smsCost;
     // Vérification des crédits de l'utilisateur
@@ -68,8 +74,13 @@ public function comptecreate(Compte $comptes, compteRequest $request, TwilioServ
         'end_percentage' => $request->end_percentage,
         'failure_message' => $request->failure_message,
         'alert_email' => true,
-        'alert_sms' => $alertSmsEnabled,
+    'alert_sms' => $alertSmsEnabled,
     ]);
+
+    if ($alertSmsEnabled && ! $compte->alert_sms) {
+        $compte->alert_sms = true;
+        $compte->save();
+    }
 
     // Déduction des crédits
     $user->credit_user -= $totalCost;
@@ -81,6 +92,10 @@ public function comptecreate(Compte $comptes, compteRequest $request, TwilioServ
             $request->nom
         );
         $twilioService->sendWhatsAppMessage($request->phone_number, $smsMessage);
+        Log::info('SMS Pro activation triggered', [
+            'compte_id' => $compte->id,
+            'phone_number' => $request->phone_number,
+        ]);
     }
 
     // Redirection avec succès vers la page de création (liste/confirmation)

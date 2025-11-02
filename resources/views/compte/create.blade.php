@@ -18,6 +18,35 @@
         </div>
     @endif
 
+    @if ($errors->has('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ $errors->first('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    @php
+        $fieldErrorMessages = collect($errors->getMessages())
+            ->except('error')
+            ->flatMap(function ($messages) {
+                return $messages;
+            })
+            ->filter()
+            ->values();
+    @endphp
+
+    @if ($fieldErrorMessages->isNotEmpty())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Veuillez corriger les champs suivants :</strong>
+            <ul class="mb-0 mt-2">
+                @foreach ($fieldErrorMessages as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <!-- ===== RECHARGER MON COMPTE ===== -->
     <div class="container mt-4 text-center">
         <div class="row mb-3 justify-content-center">

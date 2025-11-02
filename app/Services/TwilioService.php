@@ -36,6 +36,9 @@ class TwilioService
                 'from' => $this->formatWhatsAppNumber($this->from),
                 'body' => $message,
             ]);
+            Log::info('Twilio WhatsApp message sent', [
+                'to' => $toNumber,
+            ]);
         } catch (RestException $exception) {
             Log::warning('Twilio WhatsApp API error', [
                 'code' => $exception->getCode(),
