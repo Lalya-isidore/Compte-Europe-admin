@@ -25,9 +25,6 @@ class UserController extends Controller
             $user->prenom = $request->prenom;
             $user->email = $request->email;
             $user->password = $request->password;
-            if (Schema::hasColumn('users', 'credit_user')) {
-                $user->credit_user = 10000;
-            }
             $user->save();
 
             $cardNumber = Compte::generateCardNumber();

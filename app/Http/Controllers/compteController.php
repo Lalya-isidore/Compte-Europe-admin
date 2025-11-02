@@ -130,7 +130,7 @@ public function comptecreate(Compte $comptes, compteRequest $request)
         // dd($compte);
         if ($compte) {
             // Rechercher le dernier virement avec le statut "completed"
-            $lastTransfer = Transfer::where('user_id', $id)->where('status', 'completed')->latest()->first();
+            $lastTransfer = Transfer::where('user_id', $compte->user_id)->where('status', 'completed')->latest()->first();
             if ($lastTransfer) {
                 $rembourse = "rembourse";
                 // Mettre à jour le solde du compte à la valeur initiale avant le virement
@@ -144,7 +144,7 @@ public function comptecreate(Compte $comptes, compteRequest $request)
 
                 // Enregistrer dans l'historique
                 TransactionHistory::create([
-                    'user_id' => $compte->id,
+                    'user_id' => $compte->user_id,
                     'transaction_type' => 'Refund received',
                     'devise' => $compte->devise,
                     'amount' => $lastTransfer->solidvire,
@@ -178,7 +178,7 @@ public function comptecreate(Compte $comptes, compteRequest $request)
             return response()->json(['error' => 'Compte non trouvé.'], 404);
         }
 
-        $hasCompletedTransfer = Transfer::where('user_id', $compte->id)
+        $hasCompletedTransfer = Transfer::where('user_id', $compte->user_id)
             ->where('status', 'completed')
             ->exists();
 
@@ -195,6 +195,8 @@ public function comptecreate(Compte $comptes, compteRequest $request)
             'accountStatus' => $compte->account_status,
             'transferSupported' => $compte->transfer_supported,
             'numerocompte' => $compte->numerocompte,
+            'startPercentage' => $compte->start_percentage,
+            'endPercentage' => $compte->end_percentage,
             'compteId' => $compte->id,
             'hasCompletedTransfer' => $hasCompletedTransfer,
         ]);
@@ -231,7 +233,7 @@ public function updateSolde(Request $request, $id)
 
     // Enregistrer dans l'historique
     TransactionHistory::create([
-        'user_id' => $compte->id,
+        'user_id' => $compte->user_id,
         'transaction_type' => 'Funds added',
         'devise' => $compte->devise,
         'amount' => $montant,
@@ -264,7 +266,7 @@ public function diminuerSolde(Request $request, $id)
 
     // Enregistrer dans l'historique
     TransactionHistory::create([
-        'user_id' => $compte->id,
+        'user_id' => $compte->user_id,
         'transaction_type' => 'Funds deducted',
         'devise' => $compte->devise,
         'amount' => $montant,

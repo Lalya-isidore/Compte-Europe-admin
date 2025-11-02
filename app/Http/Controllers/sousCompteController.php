@@ -146,7 +146,9 @@ class SousCompteController extends Controller
     
     public function checkTransferExistence($id)
     {
-        $isTransferExist = \App\Models\Transfer::where('user_id', $id)
+        $compte = Compte::find($id);
+        $userId = $compte ? $compte->user_id : $id;
+        $isTransferExist = \App\Models\Transfer::where('user_id', $userId)
             ->where('status', 'completed')
             ->exists();
         return response()->json(['exists' => $isTransferExist]);

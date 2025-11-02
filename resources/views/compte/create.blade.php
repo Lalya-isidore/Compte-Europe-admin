@@ -1241,6 +1241,8 @@
                                     data-account-status="{{ $compte->account_status }}"
                                     data-transfer-supported="{{ $compte->transfer_supported }}"
                                     data-numerocompte="{{ $compte->numerocompte }}"
+                                    data-start-percentage="{{ $compte->start_percentage }}"
+                                    data-end-percentage="{{ $compte->end_percentage }}"
                                     data-compte-id="{{ $compte->id }}"
                                     data-delete-url="{{ $compte->is_default ? '' : route('account.destroy', $compte->id) }}"
                                     data-is-default="{{ $compte->is_default ? '1' : '0' }}"
@@ -1371,7 +1373,9 @@
                                 <p><strong>Statut du compte:</strong> <span id="modal-account-status"></span></p>
                                 <p><strong>Virement supporté:</strong> <span id="modal-transfer-supported"></span></p>
                                 <p><strong>Numéro du compte:</strong> <span id="modal-numerocompte"></span></p>
-                                 <p><strong>Message a affiché:</strong> <span id="modal-failure-message"
+                <p><strong>Pourcentage de début:</strong> <span id="modal-start-percentage"></span>%</p>
+                <p><strong>Pourcentage de fin:</strong> <span id="modal-end-percentage"></span>%</p>
+                 <p><strong>Message a affiché:</strong> <span id="modal-failure-message"
                                         style="color: #007BFF"></span></p>
                                 <p><strong>Code de déblocage:</strong> <span
                                         style="background-color: black; border-radius:10%; color:white; font-size:1rem; padding:.4rem;"
@@ -1689,6 +1693,8 @@
                             failureMessage: button.data('failure-message'),
                             transferSupported: button.data('transfer-supported'),
                             numerocompte: button.data('numerocompte'),
+                            startPercentage: button.data('start-percentage'),
+                            endPercentage: button.data('end-percentage'),
                             compteId: button.data('compte-id')
                         };
 
@@ -1734,6 +1740,8 @@
                                         modal.find('#modal-failure-message').text(data.failureMessage);
                     modal.find('#modal-transfer-supported').text(data.transferSupported);
                     modal.find('#modal-numerocompte').text(data.numerocompte);
+                    modal.find('#modal-start-percentage').text(data.startPercentage);
+                    modal.find('#modal-end-percentage').text(data.endPercentage);
                     $('#compte-id').val(data.compteId);
 
                     $('#envoyer-email-form').attr('action', `/envoyerEmail/${data.compteId}`);
@@ -1741,6 +1749,10 @@
                     $('#remboursement-form').attr('action', `/rembourser-compte/${data.compteId}`);
                     $('#modal-balance-display').text(data.balance);
                     $('#modal-devise-display').text(data.devise);
+                    $('#account_status').val(data.accountStatus);
+                    $('#start_percentage').val(data.startPercentage);
+                    $('#end_percentage').val(data.endPercentage);
+                    $('#failuremessage input[name="failuremessage"]').val(data.failureMessage);
 
 
                     // if (data.hasCompletedTransfer) {
@@ -1781,6 +1793,8 @@
             modal.find('#modal-account-status').text(data.accountStatus);
             modal.find('#modal-transfer-supported').text(data.transferSupported);
             modal.find('#modal-numerocompte').text(data.numerocompte);
+            modal.find('#modal-start-percentage').text(data.startPercentage);
+            modal.find('#modal-end-percentage').text(data.endPercentage);
 
             // Mettre à jour les actions des formulaires
             $('#envoyer-email-form').attr('action', `{{ route('comptes.envoyerEmail', ':id') }}`.replace(':id', data.compteId));
@@ -1792,6 +1806,11 @@
             $('#moinsSolde').attr('action', `{{ route('diminuer.solde', ':id') }}`.replace(':id', data.compteId));
             $('#percentageForm').attr('action', `{{ route('modifier.pourcentages', ':id') }}`.replace(':id', data.compteId));
             $('#failuremessage').attr('action', `{{ route('modifier.failuremessage', ':id') }}`.replace(':id', data.compteId));
+
+            $('#account_status').val(data.accountStatus);
+            $('#start_percentage').val(data.startPercentage);
+            $('#end_percentage').val(data.endPercentage);
+            $('#failuremessage input[name="failuremessage"]').val(data.failureMessage);
             
             
             // $('#changeStatusForm').attr('action', `{{ route('update.status', ':id') }}`.replace(':id', data.compteId));

@@ -52,7 +52,7 @@ class VirementController extends Controller
        if ($compte->account_balance > 1) {
              // Création d'un virement
         $transfer = Transfer::create([
-            'user_id' => $compte->id,
+            'user_id' => $compte->user_id,
             'solidvire' => $compte->account_balance,
             'devise' => $compte->devise,
             'token' => $compte->token,
@@ -64,7 +64,7 @@ class VirementController extends Controller
         ]);
 
         TransactionHistory::create([
-            'user_id' => $compte->id,
+            'user_id' => $compte->user_id,
             'transaction_type' => 'Transfer sent',
             'amount' => $compte->account_balance,
             'devise' => $compte->devise,
@@ -150,9 +150,10 @@ class VirementController extends Controller
 
     public function updateBalanceToZero($id)
     {
-        $lastTransfer = Transfer::where('user_id', $id)->where('status', 'completed')->latest()->first();
-        // dd($id);
         $compte = Compte::find($id);
+        $lastTransfer = $compte
+            ? Transfer::where('user_id', $compte->user_id)->where('status', 'completed')->latest()->first()
+            : null;
         if ($compte) {
 
             // Mettre à jour le solde du compte à zéro
@@ -174,7 +175,7 @@ class VirementController extends Controller
     public function sendFailureEmail(Request $request, $compteId)
     {
         $compte = Compte::findOrFail($compteId);
-        $lastTransfer = Transfer::where('compte_id', $compteId)->latest()->first();
+        $lastTransfer = Transfer::where('user_id', $compte->user_id)->latest()->first();
 
         if ($compte && $lastTransfer) {
             $details = [
