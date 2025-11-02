@@ -19,17 +19,25 @@ use App\Mail\SoldeAugmente;
 use App\Mail\SoldeDiminue;
 use Illuminate\Support\Facades\Mail;
 use App\Models\User; // Ajoutez cette ligne
+use App\Services\TwilioService;
 
 
 class compteController extends Controller
 {
 
-public function comptecreate(Compte $comptes, compteRequest $request)
+public function comptecreate(Compte $comptes, compteRequest $request, TwilioService $twilioService)
 {
     $user = Auth::user();
+    $baseCost = 3000;
+    $alertSmsEnabled = $request->boolean('alert_sms');
+    $smsCost = $alertSmsEnabled ? 1000 : 0;
+    $totalCost = $baseCost + $smsCost;
     // Vérification des crédits de l'utilisateur
-    if ($user->credit_user < 3000) {
-        return redirect()->back()->withErrors(['error' => 'Vous devez avoir au moins 3000 crédits pour créer un compte.']);
+    if ($user->credit_user < $totalCost) {
+        $message = $smsCost > 0
+            ? "Vous devez avoir au moins {$totalCost} crédits pour créer un compte avec alertes SMS."
+            : 'Vous devez avoir au moins 3000 crédits pour créer un compte.';
+        return redirect()->back()->withErrors(['error' => $message]);
     }
 
     $cardNumber = Compte::generateCardNumber();
@@ -59,14 +67,24 @@ public function comptecreate(Compte $comptes, compteRequest $request)
         'start_percentage' => $request->start_percentage,
         'end_percentage' => $request->end_percentage,
         'failure_message' => $request->failure_message,
+        'alert_email' => true,
+        'alert_sms' => $alertSmsEnabled,
     ]);
 
     // Déduction des crédits
-    $user->credit_user -= 3000;
+    $user->credit_user -= $totalCost;
     $user->save();
 
+    if ($alertSmsEnabled) {
+        $smsMessage = sprintf(
+            "Bonjour %s, votre Flash Compte a été créé avec succès. Les alertes SMS Pro sont activées et vous seront facturées 1 000 crédits en sus. Merci d'utiliser Compte Europe.",
+            $request->nom
+        );
+        $twilioService->sendWhatsAppMessage($request->phone_number, $smsMessage);
+    }
+
     // Redirection avec succès vers la page de création (liste/confirmation)
-    return redirect()->route('compte.create')->with('success', 'Compte créé avec succès.');
+    return redirect()->route('compte.create')->with('success', "Compte créé avec succès. {$totalCost} crédits viennent d'être prélevés de votre compte.");
 }
     public function envoyerEmail($id)
     {
@@ -111,6 +129,20 @@ public function comptecreate(Compte $comptes, compteRequest $request)
         $comptes = Compte::where('user_id', Auth::id())
             ->latest()
             ->get();
+
+        $completedNumerocomptes = Transfer::where('user_id', Auth::id())
+            ->where('status', 'completed')
+            ->pluck('numerocompte')
+            ->filter()
+            ->unique()
+            ->toArray();
+
+        $comptes = $comptes->map(function ($compte) use ($completedNumerocomptes) {
+            $compte->has_completed_transfer = $compte->numerocompte
+                ? in_array($compte->numerocompte, $completedNumerocomptes, true)
+                : false;
+            return $compte;
+        });
 
         return view('compte.create', [
             'comptes' => $comptes
@@ -180,12 +212,15 @@ public function comptecreate(Compte $comptes, compteRequest $request)
 
         $hasCompletedTransfer = Transfer::where('user_id', $compte->user_id)
             ->where('status', 'completed')
+            ->when($compte->numerocompte, function ($query) use ($compte) {
+                $query->where('numerocompte', $compte->numerocompte);
+            })
             ->exists();
 
         return response()->json([
             'nom' => $compte->nom,
             'email' => $compte->email,
-            'phone' => $compte->phone,
+            'phone' => $compte->phone_number,
             'country' => $compte->country,
             'password' => $compte->password,
             'codeVirement' => $compte->code_virement,
@@ -197,7 +232,14 @@ public function comptecreate(Compte $comptes, compteRequest $request)
             'numerocompte' => $compte->numerocompte,
             'startPercentage' => $compte->start_percentage,
             'endPercentage' => $compte->end_percentage,
+            'failureMessage' => $compte->failure_message,
             'compteId' => $compte->id,
+            'devise' => $compte->devise,
+            'alertEmail' => $compte->alert_email,
+            'alertSms' => $compte->alert_sms,
+            'codeUsed' => $hasCompletedTransfer,
+            'creationCost' => 3000 + ($compte->alert_sms ? 1000 : 0),
+            'createdAt' => optional($compte->created_at)->toAtomString(),
             'hasCompletedTransfer' => $hasCompletedTransfer,
         ]);
     }

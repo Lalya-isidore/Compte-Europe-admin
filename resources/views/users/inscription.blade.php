@@ -72,6 +72,19 @@
                 </div>
 
                 <div class="auth-form__field">
+                    <label for="phone_number">Numéro de téléphone (format international)</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">📱</span>
+                        <input type="tel" id="phone_number" name="phone_number" class="input-control"
+                               placeholder="+2250700000000" value="{{ old('phone_number') }}"
+                               autocomplete="tel" required>
+                    </div>
+                    @error('phone_number')
+                        <p class="input-error">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="auth-form__field">
                     <label for="password">Mot de passe</label>
                     <div class="input-wrapper">
                         <span class="input-icon">PW</span>

@@ -15,6 +15,8 @@ class Compte extends Model
 
     protected $casts = [
         'is_default' => 'boolean',
+        'alert_email' => 'boolean',
+        'alert_sms' => 'boolean',
     ];
 
     public static function generateCardNumber()

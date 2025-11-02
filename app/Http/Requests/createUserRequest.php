@@ -25,6 +25,7 @@ class createUserRequest extends FormRequest
             'nom'=>'required',
             'prenom'=>'required',
             'email'=>'required|email|unique:users',
+            'phone_number'=>'required',
             'password'=>'required|min:8',
         ];
     }
@@ -38,6 +39,8 @@ class createUserRequest extends FormRequest
             'email.reqired'=>'Le champs email est oblicatoire',
             'email.email'=>'Le champs email doit comporter un email',
             'email.unique'=>' ce email a été déja utiliser',
+
+            'phone_number.required'=>'Le numéro de téléphone est obligatoire pour activer votre compte.',
 
             'password.reqired'=>'Le champs password est oblicatoire',
         ];

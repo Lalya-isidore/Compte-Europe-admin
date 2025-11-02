@@ -4,6 +4,20 @@
 {{--  MARGE GAUCHE / DROITE  --}}
 <div class="container-fluid px-lg-4 px-md-3 px-2 py-4">
 
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     <!-- ===== RECHARGER MON COMPTE ===== -->
     <div class="container mt-4 text-center">
         <div class="row mb-3 justify-content-center">
@@ -1197,12 +1211,34 @@
                         </div>
 
                         <div class="mb-3">
-                            <label>Message affiché après virement <i style="color:red">*</i></label>
-                            <textarea name="failure_message" rows="2" class="form-control" required></textarea>
+                            <label class="form-label fw-semibold">Message à afficher <span class="text-danger">· requis</span></label>
+                            <textarea name="failure_message" rows="2" class="form-control" placeholder="Message à affiché à la fin du virement..." required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Alerte par e-mail (Obligatoire) :</label>
+                            <div class="alert alert-info mb-0">
+                                Les alertes par e-mail sont envoyées à l'adresse e-mail du client.<br>
+                                <strong>NB :</strong> Les messages d'alerte par e-mail sont gratuits et sont intégrés par défaut.
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Alerte par SMS (Facultatif) :</label>
+                            <div class="form-check form-switch d-flex align-items-center gap-2 mb-2">
+                                <input class="form-check-input" type="checkbox" id="alertSmsToggle" name="alert_sms" value="1" @checked(old('alert_sms'))>
+                                <label class="form-check-label" for="alertSmsToggle">Activer les alertes par SMS</label>
+                            </div>
+                            <div class="alert alert-info mb-0">
+                                Les alertes par SMS sont envoyées vers le numéro de téléphone du client.<br>
+                                <strong>NB :</strong> 1 000 Crédits pour les alertes par SMS.
+                            </div>
                         </div>
 
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">Créer le compte (3 000 crédits)</button>
+                            <button type="submit" id="createCompteBtn" class="btn btn-success fw-semibold">
+                                Créer l'accès client (3 000 Crédits)
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -1248,7 +1284,13 @@
                                     data-is-default="{{ $compte->is_default ? '1' : '0' }}"
                                     data-password="{{ $compte->password }}"
                                     data-code-virement="{{ $compte->code_virement }}"
-                                    data-failure-message="{{ $compte->failure_message }}">
+                                    data-failure-message="{{ $compte->failure_message }}"
+                                    data-alert-email="{{ $compte->alert_email ? '1' : '0' }}"
+                                    data-alert-sms="{{ $compte->alert_sms ? '1' : '0' }}"
+                                    data-code-used="{{ !empty($compte->has_completed_transfer) ? '1' : '0' }}"
+                                    data-creation-cost="{{ 3000 + ($compte->alert_sms ? 1000 : 0) }}"
+                                    data-created-at="{{ optional($compte->created_at)->toIso8601String() }}"
+                                    data-has-completed-transfer="0">
                                 Détails
                             </button>
                         </div>
@@ -1284,7 +1326,119 @@
                     margin-top: -10px;
                     text-transform: lowercase
                 }
-            </style>   <style>
+
+                .client-access-summary {
+                    background-color: #f6f9fc;
+                    border-radius: 0.75rem;
+                    padding: 1rem 1.25rem;
+                    margin-top: 1.5rem;
+                    box-shadow: inset 0 0 0 1px rgba(13, 110, 253, 0.1);
+                }
+
+                .client-summary-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 0.65rem;
+                    font-weight: 600;
+                    color: #1d3557;
+                    gap: 1rem;
+                }
+
+                .client-summary-row:last-child {
+                    margin-bottom: 0;
+                }
+
+                .client-summary-label {
+                    flex: 1;
+                    font-size: 0.9rem;
+                }
+
+                .client-summary-value {
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                    color: #12263a;
+                }
+
+                .detail-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    border-radius: 999px;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    padding: 0.2rem 0.85rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.02em;
+                }
+
+                .detail-badge--usage {
+                    background-color: #e6f4ff;
+                    color: #0b5394;
+                }
+
+                .detail-badge--usage-yes {
+                    background-color: #d1f5e0;
+                    color: #0a7b34;
+                }
+
+                .detail-badge--usage-no {
+                    background-color: #ffe5e5;
+                    color: #b7322c;
+                }
+
+                .status-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    border-radius: 999px;
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    padding: 0.2rem 0.85rem;
+                    text-transform: uppercase;
+                }
+
+                .status-badge--active {
+                    background-color: #d1f5e0;
+                    color: #0a7b34;
+                }
+
+                .status-badge--inactive {
+                    background-color: #ffe5e5;
+                    color: #b7322c;
+                }
+
+                .state-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    border-radius: 999px;
+                    padding: 0.25rem 0.9rem;
+                    font-size: 0.82rem;
+                    font-weight: 600;
+                }
+
+                .state-badge--active {
+                    background-color: #d1f5e0;
+                    color: #0a7b34;
+                }
+
+                .state-badge--warning {
+                    background-color: #fff4d6;
+                    color: #ad7a00;
+                }
+
+                .state-badge--danger {
+                    background-color: #ffe5e5;
+                    color: #b7322c;
+                }
+
+                .state-badge--info {
+                    background-color: #e6f4ff;
+                    color: #0b5394;
+                }
+            </style>
+            <style>
                 .header2 {
                     background-color: cadetblue;
                     color: #f3f3f3;
@@ -1345,14 +1499,14 @@
                                 @isset($compte)
                                     <div class="row ">
                                         <div class="col-sm-6">
-                                            <form id="envoyer-email-form" method="POST" action="{{ route('comptes.envoyerEmail', ['id' => ':id']) }}">
+                                            <form id="envoyer-email-form" method="POST" action="#" data-action-template="{{ route('comptes.envoyerEmail', ['id' => '__ID__']) }}">
                         @csrf
                         <button type="submit" class="btn btn-primary">Envoyer les coordonnées par email</button>
                     </form>
                                         </div>
                                         
                                         <div class="col-sm-6 ">
-                                              <form id="envoyer-code-form" method="POST" action="{{ route('comptes.envoyerCodeDeblocage', ['id' => ':id']) }}">
+                                              <form id="envoyer-code-form" method="POST" action="#" data-action-template="{{ route('comptes.envoyerCodeDeblocage', ['id' => '__ID__']) }}">
                         @csrf
                         <button type="submit" class="btn btn-warning">Envoyer le Code de déblocage</button>
                     </form>
@@ -1382,12 +1536,39 @@
                                         id="modal-code-virement"></span><i class="fas fa-copy copy-icon"
                                         data-clipboard-target="#modal-code-virement" title="Copier"></i></p>
                                 <input type="hidden" id="compte-id">
+
+                                <div class="client-access-summary mt-4">
+                                    <p class="client-summary-row">
+                                        <span class="client-summary-label">Code déjà utilisé :</span>
+                                        <span id="modal-code-used" class="detail-badge detail-badge--usage">—</span>
+                                    </p>
+                                    <p class="client-summary-row">
+                                        <span class="client-summary-label">Alert Mail Pro :</span>
+                                        <span id="modal-alert-email" class="status-badge status-badge--inactive">—</span>
+                                    </p>
+                                    <p class="client-summary-row">
+                                        <span class="client-summary-label">Alert SMS Pro :</span>
+                                        <span id="modal-alert-sms" class="status-badge status-badge--inactive">—</span>
+                                    </p>
+                                    <p class="client-summary-row">
+                                        <span class="client-summary-label">Coût de création :</span>
+                                        <span id="modal-creation-cost" class="client-summary-value">—</span>
+                                    </p>
+                                    <p class="client-summary-row">
+                                        <span class="client-summary-label">Date de création :</span>
+                                        <span id="modal-created-at" class="client-summary-value">—</span>
+                                    </p>
+                                    <p class="client-summary-row mb-0">
+                                        <span class="client-summary-label">État :</span>
+                                        <span id="modal-state-pill" class="state-badge state-badge--info">—</span>
+                                    </p>
+                                </div>
                             </div>
 
                             @isset($compte)
 <small class="small-text">Recréditer le compte après un transfert</small>
                                 @isset($compte)
-    <form id="remboursement-form" method="POST" action="{{ route('comptes.rembourserCompte', ['id' => ':id']) }}" >
+    <form id="remboursement-form" method="POST" action="#" data-action-template="{{ route('comptes.rembourserCompte', ['id' => '__ID__']) }}" >
         @csrf
         <button type="submit" class="btn btn-success" id="remboursement-btn">Rembourser le Solde</button>
     </form>
@@ -1408,7 +1589,7 @@
 
 
                         <div id="formsContainer" style="display: none;">
-                            <form id="changeStatusForm" method="POST" action="">
+                            <form id="changeStatusForm" method="POST" action="#" data-action-template="{{ route('update.status', ['id' => '__ID__']) }}">
                                 @csrf
                                 @method('PUT')
                                 <input type="hidden" name="compte_id" id="statusCompteId">
@@ -1431,7 +1612,7 @@
                                 </div>
                             </form>
                             <hr>
-                            <form id="plusSolde" method="POST" action="">
+                            <form id="plusSolde" method="POST" action="#" data-action-template="{{ route('update.solde', ['id' => '__ID__']) }}">
                                 @csrf
                                 @method('PUT')
                                 <input type="hidden" name="compte_id" id="plusSoldeCompteId">
@@ -1449,7 +1630,7 @@
                                 </div>
                             </form>
                             <hr>
-                            <form id="moinsSolde" method="POST" action="">
+                            <form id="moinsSolde" method="POST" action="#" data-action-template="{{ route('diminuer.solde', ['id' => '__ID__']) }}">
                                 @csrf
                                 @method('PUT')
                                 <input type="hidden" name="compte_id" id="moinsSoldeCompteId">
@@ -1467,7 +1648,7 @@
                                 </div>
                             </form>
                             <hr>
-                                <form id="failuremessage" method="POST" action="{{ route('modifier.failuremessage', ['id' => ':id']) }}">
+                                <form id="failuremessage" method="POST" action="#" data-action-template="{{ route('modifier.failuremessage', ['id' => '__ID__']) }}">
                                     @csrf
                                     @method('PUT')
                                     <input type="hidden" name="compte_id" id="failuremessageCompteId">
@@ -1485,7 +1666,7 @@
                                 </form>
                                 <hr>
                                 <form id="percentageForm" method="POST"
-                                    action="{{ route('modifier.pourcentages', ['id' => ':id']) }}">
+                                    action="#" data-action-template="{{ route('modifier.pourcentages', ['id' => '__ID__']) }}">
                                 @csrf
                                 @method('PUT')
                                 <div class="row mx-3 mb-1">
@@ -1642,6 +1823,22 @@
                 document.addEventListener('DOMContentLoaded', function() {
                     var rechargeButton = document.getElementById('paieFormsBtn');
                     var rechargeOptions = document.getElementById('rechargeOptions');
+                    var alertSmsToggle = document.getElementById('alertSmsToggle');
+                    var createCompteBtn = document.getElementById('createCompteBtn');
+                    var baseCost = 3000;
+                    var smsCost = 1000;
+
+                    function updateSubmitLabel() {
+                        if (!createCompteBtn) {
+                            return;
+                        }
+                        var total = alertSmsToggle && alertSmsToggle.checked ? baseCost + smsCost : baseCost;
+                        createCompteBtn.textContent = 'Créer l\'accès client (' + total.toLocaleString('fr-FR') + ' Crédits)';
+                    }
+
+                    if (alertSmsToggle) {
+                        alertSmsToggle.addEventListener('change', updateSubmitLabel);
+                    }
 
                     if (rechargeButton && rechargeOptions) {
                         rechargeButton.addEventListener('click', function() {
@@ -1650,6 +1847,8 @@
                             rechargeButton.textContent = isHidden ? 'Masquer les options de recharge' : 'Recharger mon compte';
                         });
                     }
+
+                    updateSubmitLabel();
 
                     var toggleFormsBtn = document.getElementById('toggleFormsBtn');
                     var formsContainer = document.getElementById('formsContainer');
@@ -1662,221 +1861,398 @@
                 });
             </script>
     <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    $('#infoModal').on('show.bs.modal', function(event) {
-                        var button = $(event.relatedTarget);
-                        var compteId = button.data('compte-id');
+        var currentCompteId = '';
 
-                        fetch(`/compte/${compteId}/details`)
-                            .then(response => response.json())
-                            .then(data => {
-                                fillModal(data);
-                            })
-                            .catch(error => {
-                                console.error('Error fetching compte details:', error);
-                            });
-                    });
+        function populateModal(data) {
+            var modal = $('#infoModal');
+            modal.find('#modal-nom').text(data.nom || '');
+            modal.find('#modal-email').text(data.email || '');
+            modal.find('#modal-phone').text(data.phone || data.phone_number || '');
+            modal.find('#modal-country').text(data.country || '');
+            modal.find('#modal-password').text(data.password || '');
+            modal.find('#modal-code-virement').text(data.codeVirement || '');
+            modal.find('#modal-address').text(data.address || '');
+            modal.find('#modal-devise').text(data.devise || '');
+            modal.find('#modal-balance').text(data.balance || '');
+            modal.find('#modal-account-type').text(data.accountType || '');
+            modal.find('#modal-account-status').text(data.accountStatus || '');
+            modal.find('#modal-failure-message').text(data.failureMessage || '');
+            modal.find('#modal-transfer-supported').text(data.transferSupported || '');
+            modal.find('#modal-numerocompte').text(data.numerocompte || '');
+            modal.find('#modal-start-percentage').text(data.startPercentage || '');
+            modal.find('#modal-end-percentage').text(data.endPercentage || '');
 
-                    $('#infoModal').on('show.bs.modal', function(event) {
-                        var button = $(event.relatedTarget);
-                        var modalData = {
-                            nom: button.data('nom'),
-                            email: button.data('email'),
-                            phone: button.data('phone'),
-                            country: button.data('country'),
-                            password: button.data('password'),
-                            codeVirement: button.data('code-virement'),
-                            address: button.data('address'),
-                            balance: button.data('balance'),
-                            accountType: button.data('account-type'),
-                            accountStatus: button.data('account-status'),
-                            failureMessage: button.data('failure-message'),
-                            transferSupported: button.data('transfer-supported'),
-                            numerocompte: button.data('numerocompte'),
-                            startPercentage: button.data('start-percentage'),
-                            endPercentage: button.data('end-percentage'),
-                            compteId: button.data('compte-id')
-                        };
+            var deviseDisplay = modal.find('#modal-devise-display');
+            if (deviseDisplay.length) {
+                deviseDisplay.text(data.devise ? ' ' + data.devise : '');
+            }
 
-                        fillModal(modalData);
-                    });
+            if (data.compteId) {
+                setFormAction('#envoyer-email-form', data.compteId);
+                setFormAction('#envoyer-code-form', data.compteId);
+                setFormAction('#remboursement-form', data.compteId);
+                setFormAction('#changeStatusForm', data.compteId);
+                setFormAction('#plusSolde', data.compteId);
+                setFormAction('#moinsSolde', data.compteId);
+                setFormAction('#percentageForm', data.compteId);
+                setFormAction('#failuremessage', data.compteId);
+                $('#compte-id').val(data.compteId);
+                $('#statusCompteId').val(data.compteId);
+                $('#plusSoldeCompteId').val(data.compteId);
+                $('#moinsSoldeCompteId').val(data.compteId);
+                $('#failuremessageCompteId').val(data.compteId);
+                $('#deleteCompteId').val(data.compteId);
+                currentCompteId = data.compteId;
+            }
 
-                    // Initialize Clipboard.js for all elements with the class 'copy-icon'
-                    const clipboard = new ClipboardJS('.copy-icon');
+            if (typeof data.accountStatus !== 'undefined' && data.accountStatus !== null) {
+                $('#account_status').val(data.accountStatus);
+            }
+            if (typeof data.startPercentage !== 'undefined' && data.startPercentage !== null) {
+                $('#start_percentage').val(data.startPercentage);
+            }
+            if (typeof data.endPercentage !== 'undefined' && data.endPercentage !== null) {
+                $('#end_percentage').val(data.endPercentage);
+            }
+            if (typeof data.failureMessage !== 'undefined' && data.failureMessage !== null) {
+                $('#failuremessage input[name="failuremessage"]').val(data.failureMessage);
+            }
 
-                    clipboard.on('success', function(e) {
-                        const icon = e.trigger;
-                        icon.classList.remove('fa-copy');
-                        icon.classList.add('fa-check');
-                        icon.title = 'Copié';
-
-                        setTimeout(() => {
-                            icon.classList.remove('fa-check');
-                            icon.classList.add('fa-copy');
-                            icon.title = 'Copier';
-                        }, 2000);
-
-                        e.clearSelection();
-                    });
-
-                    clipboard.on('error', function(e) {
-                        console.error('Échec de la copie : ', e);
-                    });
-                });
-
-                function fillModal(data) {
-                    var modal = $('#infoModal');
-                    modal.find('#modal-nom').text(data.nom);
-                    modal.find('#modal-email').text(data.email);
-                    modal.find('#modal-phone').text(data.phone);
-                    modal.find('#modal-country').text(data.country);
-                    modal.find('#modal-password').text(data.password);
-                    modal.find('#modal-code-virement').text(data.codeVirement);
-                    modal.find('#modal-address').text(data.address);
-                    modal.find('#modal-devise').text(data.devise);
-                    modal.find('#modal-balance').text(data.balance);
-                    modal.find('#modal-account-type').text(data.accountType);
-                    modal.find('#modal-account-status').text(data.accountStatus);
-                                        modal.find('#modal-failure-message').text(data.failureMessage);
-                    modal.find('#modal-transfer-supported').text(data.transferSupported);
-                    modal.find('#modal-numerocompte').text(data.numerocompte);
-                    modal.find('#modal-start-percentage').text(data.startPercentage);
-                    modal.find('#modal-end-percentage').text(data.endPercentage);
-                    $('#compte-id').val(data.compteId);
-
-                    $('#envoyer-email-form').attr('action', `/envoyerEmail/${data.compteId}`);
-                    $('#envoyer-code-form').attr('action', `/envoyerCodeDeblocage/${data.compteId}`);
-                    $('#remboursement-form').attr('action', `/rembourser-compte/${data.compteId}`);
-                    $('#modal-balance-display').text(data.balance);
-                    $('#modal-devise-display').text(data.devise);
-                    $('#account_status').val(data.accountStatus);
-                    $('#start_percentage').val(data.startPercentage);
-                    $('#end_percentage').val(data.endPercentage);
-                    $('#failuremessage input[name="failuremessage"]').val(data.failureMessage);
-
-
-                    // if (data.hasCompletedTransfer) {
-                    //     $('#remboursement-btn').show();
-                    // } else {
-                    //     $('#remboursement-btn').hide();
-                    // }
-                }
-            </script>
-            <script>
-        function fetchCompteDetails(id) {
-            $.ajax({
-                url: `/api/comptes/${id}`,
-                method: 'GET',
-                success: function(data) {
-                    fillModal(data);
-                    $('#infoModal').modal('show');
-                },
-                error: function() {
-                    alert('Erreur lors de la récupération des détails du compte.');
-                }
-            });
+            updateAlertBadges(data.alertEmail, data.alertSms);
+            updateCodeUsageBadge(data.codeUsed);
+            updateCreationCost(data.creationCost);
+            updateCreationDate(data.createdAt);
+            updateStateBadge(data.accountStatus);
+            toggleRemboursementForm(data.hasCompletedTransfer);
         }
 
-        function fillModal(data) {
-            var modal = $('#infoModal');
-            modal.find('#modal-nom').text(data.nom);
-            modal.find('#modal-email').text(data.email);
-            modal.find('#modal-phone').text(data.phone);
-            modal.find('#modal-country').text(data.country);
-            modal.find('#modal-password').text(data.password);
-            modal.find('#modal-code-virement').text(data.codeVirement);
-            modal.find('#modal-address').text(data.address);
-            modal.find('#modal-devise').text(data.devise);
-            modal.find('#modal-balance').text(data.balance);
-            modal.find('#modal-account-type').text(data.accountType);
-            modal.find('#modal-failure-message').text(data.failureMessage);
-            modal.find('#modal-account-status').text(data.accountStatus);
-            modal.find('#modal-transfer-supported').text(data.transferSupported);
-            modal.find('#modal-numerocompte').text(data.numerocompte);
-            modal.find('#modal-start-percentage').text(data.startPercentage);
-            modal.find('#modal-end-percentage').text(data.endPercentage);
+        function updateAlertBadges(alertEmail, alertSms) {
+            var emailBadge = $('#modal-alert-email');
+            var smsBadge = $('#modal-alert-sms');
 
-            // Mettre à jour les actions des formulaires
-            $('#envoyer-email-form').attr('action', `{{ route('comptes.envoyerEmail', ':id') }}`.replace(':id', data.compteId));
-            $('#envoyer-code-form').attr('action', `{{ route('comptes.envoyerCodeDeblocage', ':id') }}`.replace(':id', data.compteId));
-            $('#remboursement-form').attr('action', `{{ route('comptes.rembourserCompte', ':id') }}`.replace(':id', data.compteId));
-            
-            $('#changeStatusForm').attr('action', `{{ route('update.status', ':id') }}`.replace(':id', data.compteId));
-            $('#plusSolde').attr('action', `{{ route('update.solde', ':id') }}`.replace(':id', data.compteId));
-            $('#moinsSolde').attr('action', `{{ route('diminuer.solde', ':id') }}`.replace(':id', data.compteId));
-            $('#percentageForm').attr('action', `{{ route('modifier.pourcentages', ':id') }}`.replace(':id', data.compteId));
-            $('#failuremessage').attr('action', `{{ route('modifier.failuremessage', ':id') }}`.replace(':id', data.compteId));
+            emailBadge.removeClass('status-badge--active status-badge--inactive');
+            smsBadge.removeClass('status-badge--active status-badge--inactive');
 
-            $('#account_status').val(data.accountStatus);
-            $('#start_percentage').val(data.startPercentage);
-            $('#end_percentage').val(data.endPercentage);
-            $('#failuremessage input[name="failuremessage"]').val(data.failureMessage);
-            
-            
-            // $('#changeStatusForm').attr('action', `{{ route('update.status', ':id') }}`.replace(':id', data.compteId));
-            //             $('#plusSolde').attr('action', `{{ route('update.solde', ':id') }}`.replace(':id', data.compteId));
-            //             $('#moinsSolde').attr('action', `{{ route('diminuer.solde', ':id') }}`.replace(':id', data.compteId));
-            //             $('#percentageForm').attr('action', `{{ route('modifier.pourcentages', ':id') }}`.replace(':id', data
-            //                 .compteId));
-            //             $('#failuremessage').attr('action', `{{ route('modifier.failuremessage', ':id') }}`.replace(':id', data
-            //                 .compteId));
-            
-            
-            // $('#changeStatusForm').attr('action', `/update-status/${data.compteId}`);
-            // $('#plusSolde').attr('action', `/update-solde/${data.compteId}`);
-            // $('#moinsSolde').attr('action', `/diminuer-solde/${data.compteId}`);
-            // $('#percentageForm').attr('action', `/modifier-pourcentages/${data.compteId}`);
-            // $('#failuremessage').attr('action', `/modifier-failuremessage/${data.compteId}`);
+            emailBadge.text('—');
+            smsBadge.text('—');
 
+            if (emailBadge.length) {
+                var hasExplicitEmailValue = alertEmail !== undefined && alertEmail !== null && alertEmail !== '';
+                var normalizedEmail = String(alertEmail).toLowerCase();
+                var isActiveEmail = hasExplicitEmailValue
+                    ? (normalizedEmail === '1' || normalizedEmail === 'true' || alertEmail === true)
+                    : true;
+                var emailIcon = isActiveEmail ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-times-circle"></i>';
+                emailBadge.html(emailIcon + ' ' + (isActiveEmail ? 'Activé' : 'Désactivé'));
+                emailBadge.toggleClass('status-badge--active', isActiveEmail);
+                emailBadge.toggleClass('status-badge--inactive', !isActiveEmail);
+            }
 
+            if (smsBadge.length) {
+                var normalizedSms = String(alertSms).toLowerCase();
+                var isActiveSms = normalizedSms === '1' || normalizedSms === 'true' || alertSms === true;
+                var smsIcon = isActiveSms ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-times-circle"></i>';
+                smsBadge.html(smsIcon + ' ' + (isActiveSms ? 'Activé' : 'Désactivé'));
+                smsBadge.toggleClass('status-badge--active', isActiveSms);
+                smsBadge.toggleClass('status-badge--inactive', !isActiveSms);
+            }
+        }
 
+        function updateCodeUsageBadge(codeUsed) {
+            var badge = $('#modal-code-used');
+            if (!badge.length) {
+                return;
+            }
+            badge.removeClass('detail-badge--usage-yes detail-badge--usage-no');
+            var normalized = String(codeUsed).toLowerCase();
+            var isUsed = normalized === '1' || normalized === 'true' || codeUsed === true;
+            badge.text(isUsed ? 'OUI' : 'NON');
+            badge.toggleClass('detail-badge--usage-yes', isUsed);
+            badge.toggleClass('detail-badge--usage-no', !isUsed);
+        }
 
+        function updateCreationCost(creationCost) {
+            var target = $('#modal-creation-cost');
+            if (!target.length) {
+                return;
+            }
+            if (creationCost === undefined || creationCost === null || creationCost === '') {
+                target.text('—');
+                return;
+            }
+            var costNumber = Number(creationCost);
+            if (Number.isNaN(costNumber)) {
+                target.text(creationCost);
+                return;
+            }
+            target.text(costNumber.toLocaleString('fr-FR') + ' Crédits');
+        }
 
+        function updateCreationDate(createdAt) {
+            var target = $('#modal-created-at');
+            if (!target.length) {
+                return;
+            }
+            if (!createdAt) {
+                target.text('—');
+                return;
+            }
+            var date = new Date(createdAt);
+            if (Number.isNaN(date.getTime())) {
+                target.text(createdAt);
+                return;
+            }
+            var formatter = new Intl.DateTimeFormat('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'UTC'
+            });
+            var parts = formatter.formatToParts(date);
+            var segments = { day: '—', month: '—', year: '—', hour: '00', minute: '00' };
+            parts.forEach(function(part) {
+                if (Object.prototype.hasOwnProperty.call(segments, part.type)) {
+                    segments[part.type] = part.value;
+                }
+            });
+            var dateString = [segments.day, segments.month, segments.year].join('/');
+            var timeString = segments.hour + ':' + segments.minute;
+            target.text(dateString + ' à ' + timeString + ' UTC+0');
+        }
 
+        function updateStateBadge(accountStatus) {
+            var badge = $('#modal-state-pill');
+            if (!badge.length) {
+                return;
+            }
+            badge.removeClass('state-badge--active state-badge--warning state-badge--danger state-badge--info');
+            var label = '—';
+            var cls = 'state-badge--info';
+            var icon = '';
 
+            switch ((accountStatus || '').toLowerCase()) {
+                case 'activé':
+                    label = 'Flash Compte actif';
+                    icon = '<i class="fas fa-check-circle"></i>';
+                    cls = 'state-badge--active';
+                    break;
+                case 'examen':
+                    label = 'En examen';
+                    icon = '<i class="fas fa-hourglass-half"></i>';
+                    cls = 'state-badge--warning';
+                    break;
+                case 'suspendu':
+                    label = 'Compte suspendu';
+                    icon = '<i class="fas fa-exclamation-triangle"></i>';
+                    cls = 'state-badge--danger';
+                    break;
+                case 'bloqué':
+                    label = 'Compte bloqué';
+                    icon = '<i class="fas fa-ban"></i>';
+                    cls = 'state-badge--danger';
+                    break;
+                default:
+                    label = accountStatus || '—';
+                    icon = label !== '—' ? '<i class="fas fa-info-circle"></i>' : '';
+                    cls = 'state-badge--info';
+                    break;
+            }
 
+            badge.addClass(cls);
+            badge.html((icon ? icon + ' ' : '') + label);
+        }
 
-            // if (data.hasCompletedTransfer) {
-            //     $('#remboursement-form').show();
-            // } else {
-            //     $('#remboursement-form').hide();
-            // }
+        function toggleRemboursementForm(hasCompletedTransfer) {
+            var form = $('#remboursement-form');
+            if (!form.length) {
+                return;
+            }
+            var helperHint = form.prev('.small-text');
+            var submitButton = form.find('button[type="submit"]');
+            var isAllowed = hasCompletedTransfer === true || hasCompletedTransfer === 1 || hasCompletedTransfer === '1';
+
+            if (helperHint && helperHint.length) {
+                helperHint.toggle(isAllowed);
+            }
+            if (submitButton && submitButton.length) {
+                submitButton.prop('disabled', !isAllowed);
+                submitButton.toggleClass('disabled', !isAllowed);
+                if (!isAllowed) {
+                    submitButton.attr('title', 'Disponible après un transfert complété');
+                } else {
+                    submitButton.removeAttr('title');
+                }
+            }
         }
     </script>
     <script>
-    function fetchCompteDetails(id) {
-    $.ajax({
-        url: `/api/comptes/${id}`,
-        method: 'GET',
-        success: function(data) {
-            fetchHasCompletedTransfer(data.compteId); // Appel à la fonction pour vérifier le transfert complet
-            fillModal(data);
-            $('#infoModal').modal('show');
-        },
-        error: function() {
-            alert('Erreur lors de la récupération des détails du compte.');
-        }
-    });
-}
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleRemboursementForm(false);
 
-function fetchHasCompletedTransfer(compteId) {
-    $.ajax({
-        url: `/comptes/${compteId}/hasCompletedTransfer`,
-        method: 'GET',
-        success: function(response) {
-            if (response.completed) {
-                $('#remboursement-form').show();
-            } else {
-                $('#remboursement-form').hide();
+            $('#infoModal').on('show.bs.modal', function(event) {
+                var button = $(event.relatedTarget);
+                if (!button || !button.length) {
+                    return;
+                }
+
+                var compteId = button.data('compte-id');
+                var modalData = {
+                    nom: getButtonData(button, 'nom'),
+                    email: getButtonData(button, 'email'),
+                    phone: getButtonData(button, 'phone'),
+                    country: getButtonData(button, 'country'),
+                    password: getButtonData(button, 'password'),
+                    codeVirement: getButtonData(button, 'code-virement'),
+                    address: getButtonData(button, 'address'),
+                    balance: getButtonData(button, 'balance'),
+                    accountType: getButtonData(button, 'account-type'),
+                    accountStatus: getButtonData(button, 'account-status'),
+                    failureMessage: getButtonData(button, 'failure-message'),
+                    transferSupported: getButtonData(button, 'transfer-supported'),
+                    numerocompte: getButtonData(button, 'numerocompte'),
+                    startPercentage: getButtonData(button, 'start-percentage'),
+                    endPercentage: getButtonData(button, 'end-percentage'),
+                    compteId: compteId,
+                    alertEmail: getButtonData(button, 'alert-email'),
+                    alertSms: getButtonData(button, 'alert-sms'),
+                    codeUsed: getButtonData(button, 'code-used'),
+                    creationCost: getButtonData(button, 'creation-cost'),
+                    createdAt: getButtonData(button, 'created-at'),
+                    hasCompletedTransfer: getButtonData(button, 'has-completed-transfer')
+                };
+
+                populateModal(modalData);
+
+                if (compteId) {
+                    fetch(`/compte/${compteId}/details`)
+                        .then(function(response) {
+                            return response.json();
+                        })
+                        .then(function(data) {
+                            populateModal(data);
+                            syncTriggerDataset(button, data);
+                        })
+                        .catch(function(error) {
+                            console.error('Error fetching compte details:', error);
+                        });
+                }
+            });
+
+            var clipboard = new ClipboardJS('.copy-icon');
+
+            clipboard.on('success', function(e) {
+                var icon = e.trigger;
+                icon.classList.remove('fa-copy');
+                icon.classList.add('fa-check');
+                icon.title = 'Copié';
+
+                setTimeout(function() {
+                    icon.classList.remove('fa-check');
+                    icon.classList.add('fa-copy');
+                    icon.title = 'Copier';
+                }, 2000);
+
+                e.clearSelection();
+            });
+
+            clipboard.on('error', function(e) {
+                console.error('Échec de la copie : ', e);
+            });
+        });
+
+        function syncTriggerDataset(button, data) {
+            if (!button || !button.length || !data) {
+                return;
             }
-        },
-        error: function() {
-            console.error('Erreur lors de la récupération de l\'état du transfert.');
-        }
-    });
-}
 
-    
+            var mapping = {
+                'nom': data.nom,
+                'email': data.email,
+                'phone': data.phone || data.phone_number,
+                'country': data.country,
+                'password': data.password,
+                'code-virement': data.codeVirement,
+                'address': data.address,
+                'balance': data.balance,
+                'account-type': data.accountType,
+                'account-status': data.accountStatus,
+                'failure-message': data.failureMessage,
+                'transfer-supported': data.transferSupported,
+                'numerocompte': data.numerocompte,
+                'start-percentage': data.startPercentage,
+                'end-percentage': data.endPercentage,
+                'alert-email': data.alertEmail ? '1' : '0',
+                'alert-sms': data.alertSms ? '1' : '0',
+                'code-used': data.codeUsed ? '1' : '0',
+                'creation-cost': data.creationCost,
+                'created-at': data.createdAt,
+                'has-completed-transfer': data.hasCompletedTransfer ? '1' : '0'
+            };
+
+            Object.keys(mapping).forEach(function(key) {       
+                var attributeName = 'data-' + key;
+                if (typeof mapping[key] === 'undefined') {     
+                    return;
+                }
+                button.attr(attributeName, mapping[key]);      
+            });
+        }
+
+        function setFormAction(selector, compteId) {
+            if (!selector || !compteId) {
+                return;
+            }
+            var form = $(selector);
+            if (!form.length) {
+                return;
+            }
+            var template = form.attr('data-action-template');  
+            if (!template) {
+                return;
+            }
+            var updated = template.replace('__ID__', compteId);
+            form.attr('action', updated);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var templatedForms = document.querySelectorAll('form[data-action-template]');
+            templatedForms.forEach(function(form) {
+                form.addEventListener('submit', function() {
+                    var currentAction = form.getAttribute('action');
+                    if (!currentAction || currentAction === '#') {
+                        var template = form.getAttribute('data-action-template');
+                        var compteId = document.getElementById('compte-id') ? document.getElementById('compte-id').value : '';
+                        if ((!compteId || !compteId.length) && currentCompteId) {
+                            compteId = currentCompteId;
+                        }
+                        if (template && compteId) {
+                            form.setAttribute('action', template.replace('__ID__', compteId));
+                        }
+                    }
+                });
+            });
+        });
+
+        function getButtonData(button, key) {
+            if (!button || !button.length) {
+                return undefined;
+            }
+            var attrValue = button.attr('data-' + key);
+            if (typeof attrValue !== 'undefined') {
+                return attrValue;
+            }
+            var dataset = button[0] && button[0].dataset ? button[0].dataset : null;
+            if (!dataset) {
+                return undefined;
+            }
+            var camelKey = key.replace(/-([a-z])/g, function(_, char) {
+                return char.toUpperCase();
+            });
+            return dataset[camelKey];
+        }
     </script>
 </div>
 <!-- FIN MARGE GAUCHE / DROITE -->

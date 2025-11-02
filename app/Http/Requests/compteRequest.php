@@ -27,6 +27,7 @@ class compteRequest extends FormRequest
             'email' => 'required|email|max:255|unique:comptes',
             'phone_number' => 'required|string|max:20',
             'country' => 'required|string|max:255',
+            'alert_sms' => 'nullable|boolean',
             'devise' => 'required|string|max:255',
             'lang' => 'required|string|max:255',
             'address' => 'nullable|string|max:255',

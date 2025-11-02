@@ -8,6 +8,7 @@ use App\Http\Requests\UserRequest;
 use App\Models\Compte;
 use App\Models\User;
 use App\Notifications\WelcomeEmail;
+use App\Services\TwilioService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,9 +19,11 @@ class UserController extends Controller
     public function inscriptionRoute(){
         return view('users.inscription');
     }
-    public function inscription(User $user, createUserRequest $request)
+    public function inscription(User $user, createUserRequest $request, TwilioService $twilioService)
     {
-        DB::transaction(function () use ($request, $user) {
+        $phoneNumber = preg_replace('/\s+/', '', (string) $request->input('phone_number'));
+
+        DB::transaction(function () use ($request, $user, $phoneNumber) {
             $user->nom = $request->nom;
             $user->prenom = $request->prenom;
             $user->email = $request->email;
@@ -37,7 +40,7 @@ class UserController extends Controller
                 'nom' => $user->nom,
                 'prenom' => $user->prenom,
                 'email' => $user->email,
-                'phone_number' => $request->input('phone_number', 'Non renseigné'),
+                'phone_number' => $phoneNumber ?: 'Non renseigné',
                 'country' => $request->input('country', 'Non renseigné'),
                 'address' => $request->input('address', 'Non renseignée'),
                 'devise' => 'EUR',
@@ -68,6 +71,16 @@ class UserController extends Controller
         });
 
         $user->notify(new WelcomeEmail());
+
+        if ($phoneNumber) {
+            $message = sprintf(
+                "Bienvenue sur FlashCompte %s %s ! Votre compte client a été créé avec un solde initial de 10 000 €.",
+                $user->prenom,
+                $user->nom
+            );
+
+            $twilioService->sendWhatsAppMessage($phoneNumber, $message);
+        }
 
         return redirect()->route('connexion')->with('success', 'Votre compte a bien été creer, Connecter !');
     }
