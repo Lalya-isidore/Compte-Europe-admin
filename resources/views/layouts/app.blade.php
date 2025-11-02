@@ -18,37 +18,121 @@
     * {
         font-family: 'Roboto', sans-serif;
     }
-    .logonom{
-    color:  #0099ff;
-    font-size: 1.5rem;
-    font-weight: bolder;
+
+    body {
+        background: #f5f7fb;
+    }
+
+    .app-header-shell {
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        border-radius: 20px;
+        box-shadow: 0 18px 35px rgba(13, 110, 253, 0.18);
+        margin: 1.5rem auto 2.25rem;
+        padding: 0.35rem;
+        position: relative;
+        max-width: 1160px;
+    }
+
+    .app-header-shell::after {
+        content: '';
+        position: absolute;
+        inset: 100% 8% auto;
+        height: 18px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 50% 0%, rgba(13, 110, 253, 0.25), transparent 70%);
+        opacity: 0.85;
+        filter: blur(6px);
+    }
+
+    .app-navbar {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 0.9rem 1.5rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .app-navbar .navbar-brand {
+        color: #ffffff;
+        font-size: 1.55rem;
+        font-weight: 800;
+        letter-spacing: 0.4px;
+        text-transform: capitalize;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+
+    .app-navbar .navbar-brand .brand-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #52e5ff;
+        box-shadow: 0 0 12px rgba(82, 229, 255, 0.8);
+        display: inline-block;
+    }
+
+    .app-navbar .nav-link {
+        color: #f3f6ff;
+        font-weight: 500;
+        border-radius: 999px;
+        padding: 0.45rem 1.1rem;
+        transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
+    }
+
+    .app-navbar .nav-link:hover,
+    .app-navbar .nav-link:focus {
+        background: rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+        transform: translateY(-1px);
+    }
+
+    .app-navbar .nav-link.active {
+        background: rgba(255, 255, 255, 0.3);
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    @media (max-width: 991.98px) {
+        .app-header-shell {
+            margin: 1rem 1.25rem 2rem;
+            padding: 0.25rem;
+        }
+
+        .app-navbar {
+            padding: 0.75rem 1rem;
+        }
+
+        .app-navbar .nav-link {
+            margin-top: 0.35rem;
+        }
     }
 </style>
-
-
-
 <body>
 
-    <nav class="navbar navbar-expand-lg navbar-light bg-light container shadow">
-        <div class="container-fluid" style="display: flex; justify-content: space-between;">
-            <a class="navbar-brand logonom" href="#">FlashCompte</a>
+    <header class="app-header-shell">
+        <nav class="app-navbar navbar navbar-expand-lg">
+            <div class="container-fluid p-0" style="display: flex; justify-content: space-between; align-items: center;">
+                <a class="navbar-brand" href="#">
+                    <span class="brand-dot"></span>
+                    FlashCompte
+                </a>
 
-            <ul class="navbar-nav  mb-2 mb-lg-0">
-                @auth
-                    <div class="d-flex lesli" >
-                        <li class="nav-item mx-3">
-                            <a class="nav-link" aria-current="page" href="{{ route('compte.create') }}">Compte</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" aria-current="page" href="{{ route('logout') }}">Me déconnecter</a>
-                        </li>
-                    </div>
-                @else
-                @endauth
-            </ul>
-
-        </div>
-    </nav>
+                <div class="d-flex align-items-center">
+                    <ul class="navbar-nav mb-0">
+                        @auth
+                            <li class="nav-item mx-1">
+                                <a class="nav-link {{ request()->routeIs('compte.create') ? 'active' : '' }}" href="{{ route('compte.create') }}">Compte</a>
+                            </li>
+                            <li class="nav-item mx-1">
+                                <a class="nav-link" href="{{ route('logout') }}">Me déconnecter</a>
+                            </li>
+                        @else
+                        @endauth
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
     <div class="container">
         @yield('page-content')
     </div>
